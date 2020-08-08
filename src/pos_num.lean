@@ -323,6 +323,8 @@ begin
     { cases a; simp [hc]  } }
 end
 
+lemma add_assoc' (a b c : ℙ) : a + b + c = a + (b + c) :=
+by rw add_assoc a b c
 
 /-! # Equiv.to_fun and inv_fun -/
 
@@ -333,18 +335,18 @@ def equiv.to_fun_aux : ℙ → ℕ :=
 pos_num.rec 1 (λ b (n : ℕ), _root_.bit1 n) (λ b n, _root_.bit0 n)
 
 -- recursor for the funtion
-@[simp] lemma equiv.to_fun_aux_one : equiv.to_fun_aux 1 = 1 := rfl
-@[simp] lemma equiv.to_fun_aux_one' : equiv.to_fun_aux one = 1 := rfl
+@[simp] lemma equiv.to_fun_one : equiv.to_fun_aux 1 = 1 := rfl
+@[simp] lemma equiv.to_fun_one' : equiv.to_fun_aux one = 1 := rfl
 
-@[simp] lemma equiv.to_fun_aux_two : equiv.to_fun_aux (bit0 1) = 2 := rfl
+@[simp] lemma equiv.to_fun_two : equiv.to_fun_aux (bit0 1) = 2 := rfl
 
-@[simp] lemma equiv.to_fun_aux_bit0 (a : ℙ) : equiv.to_fun_aux (bit0 a) =
+@[simp] lemma equiv.to_fun_bit0 (a : ℙ) : equiv.to_fun_aux (bit0 a) =
   _root_.bit0 (equiv.to_fun_aux a) :=
 begin
   refl
 end
 
-@[simp] lemma equiv.to_fun_aux_bit1 (a : ℙ) : equiv.to_fun_aux (bit1 a) =
+@[simp] lemma equiv.to_fun_bit1 (a : ℙ) : equiv.to_fun_aux (bit1 a) =
   _root_.bit1 (equiv.to_fun_aux a) :=
 begin
   refl
@@ -441,25 +443,9 @@ end
 
 section equiv
 
-/-! # Equiv - an unfinished project. -/
+/-! # Equiv -/
 
--- the sorries up to the end of this section 
--- this sorry is me being stuck trying to
--- prove that inv_fun commutes with bit1.
--- Shing suggested
-/-
-probably. I just followed the proof that the Coq people used to see 
-what it's like. Their proof is like 7 lines, but I'm not familiar 
-enough with Coq (nor do I have it installed) to see what automation 
-they're using
-and for the lemma you're proving, can you prove 
-equiv.inv_fun_aux (a + b) = equiv.inv_fun_aux a + equiv.inv_fun_aux b 
-and bit1 x = x + x + 1? If so, then it's easy
-then the bit0 case just needs the proof that
- bit0 x = x + x and should be very similar
--/
-
-def equiv : ℙ ≃ {n : ℕ // n ≠ 0} :=
+def same : ℙ ≃ {n : ℕ // n ≠ 0} :=
 { to_fun := λ p, ⟨equiv.to_fun_aux p, equiv.to_fun_ne_zero p⟩,
   inv_fun := λ n, equiv.inv_fun_aux n.1,
   left_inv := begin
@@ -482,7 +468,94 @@ def equiv : ℙ ≃ {n : ℕ // n ≠ 0} :=
     rw hd 
   end }
 
-end equiv -- now sorry-free again
+lemma bij1 (p : ℙ) : equiv.inv_fun_aux (equiv.to_fun_aux p) = p :=
+same.left_inv p
+
+lemma bij2 (n : ℕ) (hn : n ≠ 0) : equiv.to_fun_aux (equiv.inv_fun_aux n) = n :=
+begin
+  have : same (same.symm ⟨n, hn⟩) = ⟨n, hn⟩,
+    convert same.right_inv _,
+    apply_fun subtype.val at this,
+    rw ← this,
+    congr'
+end
+--same.right_inv ⟨n, hn⟩
+
+--lemma equiv.same_symm_add : same.symm (a + b) = same.symm a + same.symm b
+
+lemma nat.add_ne_zero_left (a b : ℕ) (h : b ≠ 0) : a + b ≠ 0 :=
+begin
+  omega,
+end
+
+lemma equiv.to_fun_add (p q : ℙ) :
+  equiv.to_fun_aux (p + q) = equiv.to_fun_aux p + equiv.to_fun_aux q :=
+begin
+--  rw ← (show same.symm (same p) = p, from same.left_inv p),
+  --rw ← (show same.symm (same q) = q, from same.left_inv q),
+  rw ← (show equiv.inv_fun_aux (equiv.to_fun_aux p) = p, from same.left_inv p),
+  rw ← (show equiv.inv_fun_aux (equiv.to_fun_aux q) = q, from same.left_inv q),
+  rw ← equiv.inv_fun_add,
+  rw bij1,
+  rw bij2,
+  rw bij2,
+  { apply equiv.to_fun_ne_zero },
+  { apply nat.add_ne_zero_left,
+    apply equiv.to_fun_ne_zero },
+  { apply equiv.to_fun_ne_zero },
+  { apply equiv.to_fun_ne_zero },
+end
+
+end equiv
+
+/-- computer-science-endorsed definition of mul-/
+protected def mul (a : ℙ) : ℙ → ℙ
+| 1        := a
+| (bit0 b) := bit0 (mul b)
+| (bit1 b) := bit0 (mul b) + a
+
+instance : has_mul ℙ := ⟨pos_num.mul⟩
+
+@[simp] lemma mul_one (a : ℙ) : a * 1 = a := rfl
+
+@[simp] lemma mul_bit0 (a b : ℙ) : a * (bit0 b) = bit0 (a * b) := rfl
+
+@[simp] lemma mul_bit1 (a b : ℙ) : a * (bit1 b) = bit0 (a * b) + a := rfl
+
+@[simp] lemma one_mul (p : ℙ) : 1 * p = p :=
+begin
+  induction p;
+  all_goals { try {rw (show (one : ℙ) = 1, from rfl)}};
+  simp [*]
+end
+
+/-! # Current state : working on to_fun_mul -/
+-- (sorry-free up to here)
+
+@[simp] lemma equiv.to_fun_mul (a b : ℙ) :
+  same (a * b) = ⟨(same a).1 * (same b).1, begin
+    apply nat.mul_ne_zero;
+    apply equiv.to_fun_ne_zero,
+  end⟩ :=
+begin
+  apply subtype.eq,
+  induction b with b hb b hb generalizing a,
+  { rw (show (one : ℙ) = 1, from rfl),
+    rw mul_one,
+    symmetry',
+    apply _root_.mul_one },
+  { unfold_coes, simp [same] at hb ⊢,
+    rw equiv.to_fun_add,
+    rw equiv.to_fun_bit0,
+    sorry },
+  { sorry }
+end
+
+
+
+
+
+
 
 section pred
 
@@ -522,78 +595,48 @@ lemma pred.inv_fun_succ' (n : ℕ) :
   pred.inv_fun (n + 1) = succ (pred.inv_fun n) :=rfl
 
 
--- there is a sorry in the def of the equiv
+open nat
+
+def temp : {n : ℕ // n ≠ 0} ≃ ℕ :=
+{ to_fun := λ n, pred n.1,
+  inv_fun := λ n, ⟨nat.succ n, succ_ne_zero n⟩,
+  left_inv := λ n, begin
+    cases n with n hn,
+    cases n with n, cases hn rfl,
+    refl,
+  end,
+  right_inv := λ n, begin
+    refl,
+  end
+}
 
 /-! # equiv -/
-def pred : ℙ ≃ ℕ :=
-{ to_fun := pred.to_fun,
-  inv_fun := pred.inv_fun,
-  left_inv := begin
-    intro p,
-    induction p with p hp p hp,
-    { refl },
-    { rw pred.to_fun_bit1,
-      rw pred.inv_fun_succ',
-      simp,
---      simp_rw [pos_num.rec_bit1],
---      let ZZZ := @nat.rec _ 1 (λ (n : ℕ), succ)
---      (pos_num.rec 0 (λ (b : ℙ) (n : ℕ), n + n) (λ (b : ℙ) (n : ℕ), n + n + 1) (bit1 n_a)) = bit1 n_a,
---      change ZZZ,
-      -- change @nat.rec _ 1 (λ (n : ℕ), succ)
-      -- (pos_num.rec
-      --   0
-      --   (λ (b : ℙ) (n : ℕ), n + n)
-      --   (λ (b : ℙ) (n : ℕ), n + n + 1)
-      --   (bit1 n_a)
-      -- ) = bit1 n_a,
-      -- let WWW := @nat.rec _ 1 (λ (n : ℕ), succ)
-      -- ((pos_num.rec
-      --   0
-      --   (λ (b : ℙ) (n : ℕ), n + n)
-      --   (λ (b : ℙ) (n : ℕ), n + n + 1)
-      --   n_a
-      -- ) +
-      --      (pos_num.rec
-      --   0
-      --   (λ (b : ℙ) (n : ℕ), n + n)
-      --   (λ (b : ℙ) (n : ℕ), n + n + 1)
-      --   n_a
-      -- ) +
-      -- 1)
-      -- = bit1 n_a,
-      -- suffices : WWW,
-      -- convert this,
-      
-      sorry,
-       },
-    { sorry }
-  end,
-  right_inv := sorry }
+def pred : ℙ ≃ ℕ := same.trans temp 
 
--- the above section is a WIP
 end pred
 
 
-/-! # Addition -/
-
--- I got stuck proving it was a semigroup.
--- I want to deduce this from after the equiv
--- so I should fix the equiv first
-
--- doing add_assoc above
-
 /-! # The usual induction principle -/
 
--- Should I deduce this from an equiv to a nat-like object?
-lemma induction (C : ℙ → Prop) (h1 : C 1) (hsucc : ∀ n : ℙ, C n → C (n + 1)) :
-  ∀ n, C n :=
+-- I deduce this from an equiv to a nat-like object.
+def pos_num.induction (C : ℙ → Prop) (x : C 1) (h : ∀ d, C d → C (succ d))
+  (p : ℙ) : C p :=
 begin
+  suffices : ∀ n : ℕ, C (pred.symm n),
+  { convert this (pred p), simp },
   intro n,
-  induction n with a b,
-  { assumption },
-  repeat {sorry},
+  induction n with d hd,
+  { convert x },
+  { convert h _ hd },
 end
 
+def pow : ℙ → ℙ → ℙ
+| x 1 := 1
+| x (bit0 y) := pow x y * pow x y
+| x (bit1 y) := pow x y * pow x y * x
+-- cf bit1 y = y + y + 1
+
+-- all the usual pred stuff
 
 
 def pred' : ℙ → ℙ
@@ -606,14 +649,6 @@ def size : ℙ → ℙ
 | (bit0 n) := succ (size n)
 | (bit1 n) := succ (size n)
 
-
-  protected def mul (a : ℙ) : ℙ → ℙ
-  | 1        := a
-  | (bit0 b) := bit0 (mul b)
-  | (bit1 b) := bit0 (mul b) + a
-
-  instance : has_mul ℙ := ⟨pos_num.mul⟩
-
   def of_nat_succ : ℕ → ℙ
   | 0            := 1
   | (nat.succ n) := succ (of_nat_succ n)
@@ -622,8 +657,14 @@ def size : ℙ → ℙ
 
 /-! # semigroup-/
 
+instance : add_semigroup ℙ :=
+{ add := (+),
+  add_assoc := add_assoc' }
 
+/-! # mul -/
 
+#print pos_num.mul
+-- not even a monoid because no 0
 
   open ordering
 
