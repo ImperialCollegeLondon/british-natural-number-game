@@ -1,5 +1,7 @@
 import pos_num
 
+namespace xena
+
 namespace pos_num
 
   def bit (b : bool) : ℙ → ℙ := cond b bit1 bit0
@@ -26,3 +28,5 @@ open ordering
   | (bit1 a) (bit1 b) := cmp a b
 
 end pos_num
+
+end xena

@@ -91,7 +91,16 @@ instance : partial_order ℙ :=
     assumption,
   end,
   le_trans := begin
-    sorry
+    rintros ⟨_,a0,a1⟩ ⟨_,b0,b1⟩ ⟨_,c0,c1⟩,
+    --try {cc}, -- solves five of them
+    { cc },
+    { cc },
+    { cc },
+    { intros, apply one_le one,
+
+    },
+    
+    repeat {sorry}
   end,
   le_antisymm := begin
     sorry

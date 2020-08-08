@@ -1,5 +1,8 @@
 import cs
 
+namespace xena
+
+
 /-- The type of nonnegative binary numbers, using `pos_num`.
 
      13 = 1101(base 2) = pos (bit1 (bit0 (bit1 one))) -/
@@ -20,9 +23,9 @@ inductive znum : Type
 | zero : znum
 | pos  : pos_num → znum
 | neg  : pos_num → znum
-instance : has_zero znum := ⟨znum.zero⟩
-instance : has_one znum := ⟨znum.pos 1⟩
-instance : inhabited znum := ⟨0⟩
+instance foo1 : has_zero znum := ⟨znum.zero⟩
+instance bar1 : has_one znum := ⟨znum.pos 1⟩
+instance baz1 : inhabited znum := ⟨0⟩
 
 /-- See `snum`. -/
 @[derive has_reflect, derive decidable_eq]
@@ -48,14 +51,17 @@ inductive snum : Type
 | zero : bool → snum
 | nz : nzsnum → snum
 instance : has_coe nzsnum snum := ⟨snum.nz⟩
-instance : has_zero snum := ⟨snum.zero ff⟩
-instance : has_one nzsnum := ⟨nzsnum.msb tt⟩
-instance : has_one snum := ⟨snum.nz 1⟩
-instance : inhabited nzsnum := ⟨1⟩
-instance : inhabited snum := ⟨0⟩
+instance foo : has_zero snum := ⟨snum.zero ff⟩
+instance moo : has_one nzsnum := ⟨nzsnum.msb tt⟩
+instance boo : has_one snum := ⟨snum.nz 1⟩
+instance  bar : inhabited nzsnum := ⟨1⟩
+instance baz : inhabited snum := ⟨0⟩
 
 
-  def pred' : pos_num → num
-  | 1        := 0
-  | (bit0 n) := num.pos (num.cases_on (pred' n) 1 bit1)
-  | (bit1 n) := num.pos (bit0 n)
+-- doesn't work for some reason
+--   def pred' : pos_num → num
+--   | 1        := 0
+--   | (bit0 n) := num.pos (num.cases_on (pred' n) 1 bit1)
+--   | (bit1 n) := num.pos (bit0 n)
+
+end xena
