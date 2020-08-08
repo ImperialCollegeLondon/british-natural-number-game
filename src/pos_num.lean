@@ -67,11 +67,13 @@ def size : ℙ → ℙ
 -- inductive prop
 -- not sure if this is right
 inductive le : ∀ (a b : ℙ), Prop
-| le_one : ∀ (a : ℙ), le 1 a 
+| one_le : ∀ (a : ℙ), le 1 a 
 | bit0_mono : ∀ (a b : ℙ), le a b → le (bit0 a) (bit0 b)
 | bit1_mono : ∀ (a b : ℙ), le a b → le (bit1 a) (bit1 b)
 | comm_diag : ∀ (a b : ℙ), le a b → le (bit0 a) (bit1 b)  
 | funny_one : ∀ (a b : ℙ), le a b → a ≠ b → le (bit1 a) (bit0 b)
+
+namespace le
 
 instance : has_le ℙ := ⟨le⟩
 
@@ -80,7 +82,13 @@ instance : has_le ℙ := ⟨le⟩
 instance : partial_order ℙ :=
 { le := le,
   le_refl := begin
-    sorry
+    intro a,
+    induction a,
+    apply one_le,
+    apply bit1_mono,
+    assumption,
+    apply bit0_mono,
+    assumption,
   end,
   le_trans := begin
     sorry
@@ -88,6 +96,12 @@ instance : partial_order ℙ :=
   le_antisymm := begin
     sorry
   end }
+
+end le
+
+end pos_num
+
+end xena
 
 #exit
 
