@@ -112,11 +112,12 @@ begin
 end
 
 /-! # Mathematician's interface to addition -/
--- note: add_succ not yet done
 
 @[simp] lemma one_add_one : 1 + 1 = bit0 1 := rfl
 @[simp] lemma one_add_bit0 (p : ℙ) :
   1 + bit0 p = bit1 p := rfl
+@[simp] lemma one_add_bit0' (p : ℙ) :
+  one + bit0 p = bit1 p := rfl
 @[simp] lemma one_add_bit1 (p : ℙ) :
   (1 : ℙ) + (bit1 p) = bit0 (1 + p) :=
   begin
@@ -125,6 +126,9 @@ end
     congr,
     apply succ_eq_one_add,
   end  
+
+@[simp] lemma one_add_bit1' (p : ℙ) :
+  one + bit1 p = bit0 (1 + p) := one_add_bit1 p
 
 @[simp] lemma bit0_add_one (a : ℙ) : (bit0 a) + 1 = bit1 a := rfl
 @[simp] lemma bit1_add_one (a : ℙ) : (bit1 a) + 1 = bit0 (a + 1) :=
@@ -208,6 +212,34 @@ begin
   cases ha; cases hb; apply even_bit0,
 end
 
+lemma add_one_add_one (a : ℙ) : a + (1 + 1) = a + 1 + 1 :=
+begin
+  induction a; simp; refl,
+end
+
+
+-- finally add_succ
+lemma add_succ (a b : ℙ) : a + succ b = succ (a + b) :=
+begin
+  induction b with b hb b hb generalizing a,
+  { show a + (1 + 1) = succ (a + 1),
+    rw succ_eq_add_one,
+    exact add_one_add_one a
+  },
+  { induction a with a ha a ha,
+    { simp [succ_eq_one_add] },
+    { simp, --rw succ_eq_add_one,
+      rw hb a,
+      rw succ_eq_add_one },
+    { simp [hb a] } },
+  { simp,
+    induction a with a ha a ha,
+    { simp [succ_eq_one_add] },
+    { simp [succ_eq_add_one] },
+    { rw [bit0_add_bit1, bit0_add_bit0, succ_bit0] } }
+end
+
+
 /-! # Equiv.to_fun and inv_fun -/
 
 -- data
@@ -248,7 +280,7 @@ def equiv.inv_fun_aux : ℕ → ℙ
 
 --#print prefix equiv.inv_fun
 
-@[simp] lemma equiv.inv_fun_aux_one : equiv.inv_fun_aux 1 = 1 := rfl
+@[simp] lemma equiv.inv_fun_one : equiv.inv_fun_aux 1 = 1 := rfl
 @[simp] lemma equiv.inv_fun_succ_succ (n : ℕ) :
   equiv.inv_fun_aux (n + 2) =
     succ (equiv.inv_fun_aux (n + 1)) :=
@@ -256,7 +288,7 @@ begin
   refl
 end
 
-@[simp] lemma equiv.inv_fun_aux_succ {n : ℕ} (hn : n ≠ 0) :
+@[simp] lemma equiv.inv_fun_succ {n : ℕ} (hn : n ≠ 0) :
   equiv.inv_fun_aux (nat.succ n) =
     succ (equiv.inv_fun_aux n) :=
 begin
@@ -286,8 +318,14 @@ begin
     congr' },
   { intro d,
     intro h,
-
-    sorry }
+    change equiv.inv_fun_aux (a + (d + 1)) = equiv.inv_fun_aux a + equiv.inv_fun_aux (d + 1),
+    change equiv.inv_fun_aux (nat.succ (a + d)) = equiv.inv_fun_aux a + equiv.inv_fun_aux (d + 1),
+    rw equiv.inv_fun_succ, swap, omega,
+    rw ←nat.succ_eq_add_one,
+    rw equiv.inv_fun_succ,
+    rw pos_num.add_succ,
+--    show _ = _ + equiv.inv_fun_aux (succ d),
+    sorry, sorry }
 end
 
 
@@ -438,18 +476,6 @@ def pred : ℙ ≃ ℕ :=
 -- the above section is a WIP
 end pred
 
-
-
-
-
-/-! # Open Succ project -/
-
-lemma add_succ (a b : ℙ) : a + succ b = succ (a + b) :=
-begin
-  induction a; induction b;
-  try {refl },
-  repeat {sorry },
-end
 
 /-! # Addition -/
 
