@@ -26,7 +26,7 @@ def thirty_seven := bit1 (bit0 (bit1 (bit0 (bit0 (one)))))
 
 instance : inhabited ℙ := ⟨thirty_seven⟩
 
-#print pos_num.rec
+--#print pos_num.rec
 @[simp] lemma rec_one (C : ℙ → Type) (x : C 1) (h1 : Π (a : ℙ), C a → C (bit1 a))
  (h0 : Π (a : ℙ), C a → C (bit0 a)) : (pos_num.rec x h1 h0 1  : C 1) = x := rfl
 
@@ -96,6 +96,39 @@ end
 -- equiv.inv_fun_aux : ℕ → pos_num is the identity on positive n.
 -- it's defined by recursion
 
+/-! # Even and odd -- it all works -/
+inductive even : ℙ → Prop
+| even_bit0 (n : ℙ) : even (bit0 n)
+
+inductive odd : ℙ → Prop
+| odd_one : odd 1
+| odd_bit1 (n : ℙ) : odd (bit1 n)
+
+def odd_one := odd.odd_one -- put it in the root namespace
+def even_bit0 := even.even_bit0
+def odd_bit1 := odd.odd_bit1
+
+lemma even_or_odd (a : ℙ) : even a ∨ odd a :=
+begin
+  cases a,
+  right, apply odd_one,
+  right, apply odd_bit1,
+  left, apply even_bit0
+end
+
+lemma not_even_and_odd (a : ℙ) : ¬ (even a ∧ odd a) :=
+begin
+  induction a,
+  { rintro ⟨⟨⟩,_⟩},
+  { rintro ⟨⟨⟩,_⟩},
+  /-
+protected eliminator xena.pos_num.rec : Π {C : ℙ → Sort l},
+  C one → (Π (a : ℙ), C a → C (bit1 a)) → (Π (a : ℙ), C a → C (bit0 a)) → Π (n : ℙ), C n
+-/
+
+  { rintro ⟨_,⟨⟩⟩ },
+end
+
 section equiv
 
 /-! # Equiv - an unfinished project. -/
@@ -109,6 +142,9 @@ probably. I just followed the proof that the Coq people used to see what it's li
 and for the lemma you're proving, can you prove equiv.inv_fun_aux (a + b) = equiv.inv_fun_aux a + equiv.inv_fun_aux b and bit1 x = x + x + 1? If so, then it's easy
 then the bit0 case just needs the proof that bit0 x = x + x and should be very similar
 -/
+
+-- there are two sorries in this section.
+
 lemma equiv.inv_fun_aux_bit1 {n : ℕ} (hn : n ≠ 0) :
   bit1 (equiv.inv_fun_aux n) = equiv.inv_fun_aux (n + n + 1) :=
 begin
@@ -146,9 +182,18 @@ def equiv : ℙ ≃ {n : ℕ // n ≠ 0} :=
 
 end equiv -- now sorry-free again
 
+section pred
+
+/-! # Pred == a possibly mad project. -/
+
+-- I get stuck proving the equiv. There is a sorry in the
+-- equiv in this section.
+
+/-! to_fun is the bijection ℙ → ℕ, considered as a function. -/
 def pred.to_fun : ℙ → ℕ :=
 pos_num.rec 0 (λ b (n : ℕ), (n + n + 1 + 1)) (λ b n, n + n + 1)
 
+-- interface for pred.to_fun
 lemma pred.to_fun_one : pred.to_fun 1 = 0 := rfl
 lemma pred.to_fun_two : pred.to_fun (bit0 1) = 1 := rfl
 lemma pred.to_fun_bit0 (a : ℙ) : pred.to_fun (bit0 a) =
@@ -163,7 +208,10 @@ begin
   refl
 end
 
+/-- `inv_fun : the bijection ℕ → ℙ, considered as a function -/
 def pred.inv_fun := nat.rec 1 (λ n p, succ p)
+
+-- the interface for inv_fun
 
 lemma pred.inv_fun_zero : pred.inv_fun 0 = 1 :=rfl
 lemma pred.inv_fun_succ (n : ℕ) :
@@ -171,6 +219,8 @@ lemma pred.inv_fun_succ (n : ℕ) :
 lemma pred.inv_fun_succ' (n : ℕ) :
   pred.inv_fun (n + 1) = succ (pred.inv_fun n) :=rfl
 
+
+-- there is a sorry in the def of the equiv
 
 /-! # equiv -/
 def pred : ℙ ≃ ℕ :=
@@ -218,34 +268,16 @@ def pred : ℙ ≃ ℕ :=
   end,
   right_inv := sorry }
 
+-- the above section is a WIP
+end pred
 
-inductive even : ℙ → Prop
-| even_bit0 (n : ℙ) : even (bit0 n)
 
-inductive odd : ℙ → Prop
-| odd_one : odd 1
-| odd_bit1 (n : ℙ) : odd (bit1 n)
+/-! # Addition -/
 
-def odd_one := odd.odd_one -- put it in the root namespace
-def even_bit0 := even.even_bit0
-def odd_bit1 := odd.odd_bit1
+-- Working on making mathematician's interface and
+-- recursor for addition.
 
-lemma even_or_odd (a : ℙ) : even a ∨ odd a :=
-begin
-  cases a,
-  right, apply odd_one,
-  right, apply odd_bit1,
-  left, apply even_bit0
-end
-
-lemma not_even_and_odd (a : ℙ) : ¬ (even a ∧ odd a) :=
-begin
-  induction a,
-  { rintro ⟨⟨⟩,_⟩},
-  { rintro ⟨⟨⟩,_⟩},
-  { rintro ⟨_,⟨⟩⟩ },
-end
-
+-- computer scientists want this definition
 /-- addition on ℙ -/
 protected def add : ℙ → ℙ → ℙ
 | 1        b        := succ b
@@ -255,17 +287,82 @@ protected def add : ℙ → ℙ → ℙ
 | (bit0 a) (bit1 b) := bit1 (add a b)
 | (bit1 a) (bit0 b) := bit1 (add a b)
 
+-- I don't need succ, I want + to be the primitive object
+-- because it has more symmetries
+/--
+latexdef $ (+) : \P^2 \to \P $
+| 1        1        := bit0 1
+| 1        (bit0 b) := bit1 b
+| 1        (bit1 b) := bit0 (1 + b)
+| (bit0 a) 1        := bit1 a
+| (bit1 a) 1        := bit1 (a + 1)
+| (bit0 a) (bit0 b) := bit0 (a + b)
+-- when I do the carry one, in exactly
+-- what order do I add the carry 1 to the
+-- two digits in the next column?
+-- This way is is "add like normal, but then don't forget to add on
+-- the carry one after"
+| (bit1 a) (bit1 b) := bit0 ((a + b) + 1)
+| (bit0 a) (bit1 b) := bit1 (a + b)
+| (bit1 a) (bit0 b) := bit1 (a + b)
+-/
 instance : has_add ℙ := ⟨pos_num.add⟩
+
+/-! # Succ -/
+
+
+lemma succ_eq_add_one (a : ℙ) : succ a = a + 1 :=
+begin
+  cases a; refl
+end
+
+lemma succ_eq_one_add (a : ℙ) : succ a = 1 + a :=
+begin
+  cases a; refl
+end
+
+/-! # Mathematician's interface to addition -/
+-- note: add_succ not yet done
 
 @[simp] lemma one_add_one : 1 + 1 = bit0 1 := rfl
 @[simp] lemma one_add_bit0 (p : ℙ) :
   1 + bit0 p = bit1 p := rfl
 @[simp] lemma one_add_bit1 (p : ℙ) :
-  (1 : ℙ) + (bit1 p) = bit0 (p + 1) :=
+  (1 : ℙ) + (bit1 p) = bit0 (1 + p) :=
   begin
     change succ (bit1 p) = _,
-    sorry,
+    unfold succ,
+    congr,
+    apply succ_eq_one_add,
   end  
+
+@[simp] lemma bit0_add_one (a : ℙ) : (bit0 a) + 1 = bit1 a := rfl
+@[simp] lemma bit1_add_one (a : ℙ) : (bit1 a) + 1 = bit0 (a + 1) :=
+begin
+  show succ (bit1 a) = _,
+  unfold succ,
+  rw succ_eq_add_one
+end
+
+@[simp] lemma bit0_add_bit0 (a b : ℙ) :
+  (bit0 a) + (bit0 b) = bit0 (a + b) := rfl
+@[simp] lemma bit1_add_bit1 (a b : ℙ) :
+  (bit1 a) + (bit1 b) = bit0 ((a + b) + 1) :=
+begin
+--  show (bit1 a) + (bit1 b) = bit0 ((a + b) + 1) :=
+  show bit0 (succ (a + b)) = _,
+  rw succ_eq_add_one
+end
+
+@[simp] lemma bit0_add_bit1 (a b : ℙ) :
+ (bit0 a) + (bit1 b) = bit1 (a + b) := rfl
+@[simp] lemma bit1_add_bit0 (a b : ℙ) :
+  (bit1 a) + (bit0 b) = bit1 (a + b) := rfl
+
+
+/-! # Even and odd -/
+
+-- This just works.
 
 lemma odd_add_odd (a b : ℙ) (ha : odd a) (hb : odd b) : even (a + b) :=
 begin
@@ -288,15 +385,8 @@ begin
 end
 
 
-lemma succ_eq_add_one (a : ℙ) : succ a = a + 1 :=
-begin
-  cases a; refl
-end
 
-lemma succ_eq_one_add (a : ℙ) : succ a = 1 + a :=
-begin
-  cases a; refl
-end
+/-! # Open Succ project -/
 
 lemma add_succ (a b : ℙ) : a + succ b = succ (a + b) :=
 begin
@@ -305,7 +395,11 @@ begin
   repeat {sorry },
 end
 
--- addition
+/-! # Addition -/
+
+-- I got stuck proving it was a semigroup.
+-- I want to deduce this from after the equiv
+-- so I should fix the equiv first
 
 lemma add_assoc (a b c : ℙ) : a + (b + c) = (a + b) + c :=
 begin
@@ -314,6 +408,9 @@ begin
   repeat {sorry},
 end
 
+/-! # The usual induction principle -/
+
+-- Should I deduce this from an equiv to a nat-like object?
 lemma induction (C : ℙ → Prop) (h1 : C 1) (hsucc : ∀ n : ℙ, C n → C (n + 1)) :
   ∀ n, C n :=
 begin
