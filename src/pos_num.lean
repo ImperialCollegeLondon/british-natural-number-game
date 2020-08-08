@@ -20,13 +20,20 @@ notation `ℙ` := pos_num
 
 namespace pos_num
 
+-- there is no interface relating one, bit0 and bit1.
+
+-- notation for 1
 instance : has_one ℙ := ⟨pos_num.one⟩
 
+-- the default natural
 def thirty_seven := bit1 (bit0 (bit1 (bit0 (bit0 (one)))))
 
+-- the naturals are nonempty
 instance : inhabited ℙ := ⟨thirty_seven⟩
 
---#print pos_num.rec
+-- this interface for rec is just to make stuff work under the hood.
+--#check @pos_num.rec
+-- if you are interested.
 @[simp] lemma rec_one (C : ℙ → Type) (x : C 1) (h1 : Π (a : ℙ), C a → C (bit1 a))
  (h0 : Π (a : ℙ), C a → C (bit0 a)) : (pos_num.rec x h1 h0 1  : C 1) = x := rfl
 
@@ -41,6 +48,9 @@ instance : inhabited ℙ := ⟨thirty_seven⟩
    (h0 : Π (a : ℙ), C a → C (bit0 a)) (p : ℙ) :
    (pos_num.rec x h1 h0 (bit1 p)  : C (bit1 p)) = h1 p (pos_num.rec x h1 h0 p) := rfl
 
+/-! # Succ -/
+
+-- we define `succ` and its interface with the three constructors.
 
 def succ : ℙ → ℙ
 | 1        := bit0 one
@@ -52,9 +62,6 @@ def succ : ℙ → ℙ
 @[simp] lemma succ_bit0 (n : ℙ) : succ (bit0 n) = bit1 n := rfl
 
 /-! # Addition -/
-
--- Working on making mathematician's interface and
--- recursor for addition.
 
 -- computer scientists want this definition
 /-- addition on ℙ -/
@@ -68,27 +75,31 @@ protected def add : ℙ → ℙ → ℙ
 
 -- I don't need succ, I want + to be the primitive object
 -- because it has more symmetries
+-- My proposed definition of addition is below
 /--
 latexdef $ (+) : \P^2 \to \P $
 | 1        1        := bit0 1
 | 1        (bit0 b) := bit1 b
 | 1        (bit1 b) := bit0 (1 + b)
 | (bit0 a) 1        := bit1 a
-| (bit1 a) 1        := bit1 (a + 1)
 | (bit0 a) (bit0 b) := bit0 (a + b)
+| (bit0 a) (bit1 b) := bit1 (a + b)
+| (bit1 a) 1        := bit1 (a + 1)
+| (bit1 a) (bit0 b) := bit1 (a + b)
+-- Now for the last one.
 -- when I do the carry one, in exactly
 -- what order do I add the carry 1 to the
 -- two digits in the next column?
 -- This way is is "add like normal, but then don't forget to add on
 -- the carry one after"
 | (bit1 a) (bit1 b) := bit0 ((a + b) + 1)
-| (bit0 a) (bit1 b) := bit1 (a + b)
-| (bit1 a) (bit0 b) := bit1 (a + b)
 -/
 instance : has_add ℙ := ⟨pos_num.add⟩
 
-/-! # Succ -/
+-- I will make the mathematician's recursor in a minute.
+-- First let's do some easier stuff relating succ and addition.
 
+-- addition and succ
 
 lemma succ_eq_add_one (a : ℙ) : succ a = a + 1 :=
 begin
@@ -141,7 +152,7 @@ end
 
 /-! # Even and odd -/
 
--- This just works.
+-- This just works but it's kind of useless.
 
 /-! # Even and odd -- it all works -/
 inductive even : ℙ → Prop
@@ -197,9 +208,15 @@ begin
   cases ha; cases hb; apply even_bit0,
 end
 
+/-! # Equiv.to_fun and inv_fun -/
+
+-- data
+
+/-- the "identity" inclusion sending n to n -/
 def equiv.to_fun_aux : ℙ → ℕ :=
 pos_num.rec 1 (λ b (n : ℕ), _root_.bit1 n) (λ b n, _root_.bit0 n)
 
+-- recursor for the funtion
 @[simp] lemma equiv.to_fun_aux_one : equiv.to_fun_aux 1 = 1 := rfl
 @[simp] lemma equiv.to_fun_aux_one' : equiv.to_fun_aux one = 1 := rfl
 
@@ -210,7 +227,6 @@ pos_num.rec 1 (λ b (n : ℕ), _root_.bit1 n) (λ b n, _root_.bit0 n)
 begin
   refl
 end
-#print _root_.bit0
 
 @[simp] lemma equiv.to_fun_aux_bit1 (a : ℙ) : equiv.to_fun_aux (bit1 a) =
   (equiv.to_fun_aux a + equiv.to_fun_aux a + 1) :=
@@ -224,7 +240,7 @@ begin
   simp [*, _root_.bit0],
 end
 
-
+-- note: returns a junk value at 0
 def equiv.inv_fun_aux : ℕ → ℙ
 | 0 := thirty_seven -- unreachable code has been reached
 | 1 := 1
@@ -240,10 +256,38 @@ begin
   refl
 end
 
-@[simp] lemma equiv.inv_map_add (a b : ℕ) :
+@[simp] lemma equiv.inv_fun_aux_succ {n : ℕ} (hn : n ≠ 0) :
+  equiv.inv_fun_aux (nat.succ n) =
+    succ (equiv.inv_fun_aux n) :=
+begin
+  cases n, cases hn rfl, clear hn,
+  refl
+end
+
+-- pnat inductive principle
+@[elab_as_eliminator] def pnat'.induction {C : ℕ → Prop} {n : ℕ} (hn : n ≠ 0) (h1 : C 1)
+  (IH : ∀ d, C d → C (d + 1)) : C n :=
+begin
+  cases n, cases hn rfl, clear hn,
+  induction n with d hd, assumption,
+  apply IH,
+  assumption,
+end
+
+
+/-! ## relation between equiv and addition -/
+@[simp] lemma equiv.inv_map_add {a b : ℕ} (ha : a ≠ 0) (hb : b ≠ 0) :
   equiv.inv_fun_aux (a + b) = equiv.inv_fun_aux a + equiv.inv_fun_aux b :=
 begin
-  sorry
+  apply pnat'.induction hb,
+  { cases a, cases ha rfl,
+    rw equiv.inv_fun_succ_succ,
+    rw succ_eq_add_one,
+    congr' },
+  { intro d,
+    intro h,
+
+    sorry }
 end
 
 
@@ -298,8 +342,7 @@ def equiv : ℙ ≃ {n : ℕ // n ≠ 0} :=
       suffices : equiv.inv_fun_aux (_root_.bit1 (equiv.to_fun_aux p)) = 
       bit1 (equiv.inv_fun_aux (equiv.to_fun_aux p)),
         convert this,
-        sorry,
-      sorry },
+        sorry },
     { sorry }
   end,
   right_inv := sorry }
