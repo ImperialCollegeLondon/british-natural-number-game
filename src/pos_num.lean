@@ -101,15 +101,21 @@ instance : has_add ℙ := ⟨pos_num.add⟩
 
 -- addition and succ
 
-lemma succ_eq_add_one (a : ℙ) : succ a = a + 1 :=
+@[simp] lemma add_one_eq_succ (a : ℙ) : a + 1 = succ a :=
 begin
   cases a; refl
 end
 
-lemma succ_eq_one_add (a : ℙ) : succ a = 1 + a :=
+@[simp] lemma add_one_eq_succ' (a : ℙ) : a + one = succ a :=
+add_one_eq_succ a
+
+@[simp] lemma one_add_eq_succ (a : ℙ) : 1 + a = succ a :=
 begin
   cases a; refl
 end
+
+@[simp] lemma one_add_eq_succ' (a : ℙ) : one + a = succ a :=
+one_add_eq_succ a
 
 /-! # Mathematician's interface to addition -/
 
@@ -124,19 +130,22 @@ end
     change succ (bit1 p) = _,
     unfold succ,
     congr,
-    apply succ_eq_one_add,
+    simp,
   end  
 
 @[simp] lemma one_add_bit1' (p : ℙ) :
   one + bit1 p = bit0 (1 + p) := one_add_bit1 p
 
 @[simp] lemma bit0_add_one (a : ℙ) : (bit0 a) + 1 = bit1 a := rfl
+@[simp] lemma bit0_add_one' (a : ℙ) : (bit0 a) + one = bit1 a := rfl
 @[simp] lemma bit1_add_one (a : ℙ) : (bit1 a) + 1 = bit0 (a + 1) :=
 begin
   show succ (bit1 a) = _,
   unfold succ,
-  rw succ_eq_add_one
+  simp,
 end
+@[simp] lemma bit1_add_one' (a : ℙ) : (bit1 a) + one = bit0 (a + one) :=
+bit1_add_one a
 
 @[simp] lemma bit0_add_bit0 (a b : ℙ) :
   (bit0 a) + (bit0 b) = bit0 (a + b) := rfl
@@ -145,7 +154,7 @@ end
 begin
 --  show (bit1 a) + (bit1 b) = bit0 ((a + b) + 1) :=
   show bit0 (succ (a + b)) = _,
-  rw succ_eq_add_one
+  simp
 end
 
 @[simp] lemma bit0_add_bit1 (a b : ℙ) :
@@ -153,6 +162,27 @@ end
 @[simp] lemma bit1_add_bit0 (a b : ℙ) :
   (bit1 a) + (bit0 b) = bit1 (a + b) := rfl
 
+/-! #  some more bit0 and bit1 things -/
+
+lemma bit0_eq_add_self (p : ℙ) : bit0 p = p + p :=
+begin
+  induction p with p hp p hp,
+  { refl },
+  { rw bit1_add_bit1,
+    congr',
+    rw ←hp,
+    rw bit0_add_one
+  },
+  { rw bit0_add_bit0,
+    congr' }
+end
+
+lemma bit1_eq_add_self_add_one (p : ℙ) : bit1 p = p + p + 1 :=
+begin
+  rw ←succ_bit0,
+  rw bit0_eq_add_self,
+  simp,
+end
 
 /-! # Even and odd -/
 
@@ -219,24 +249,59 @@ end
 
 
 -- finally add_succ
-lemma add_succ (a b : ℙ) : a + succ b = succ (a + b) :=
+@[simp] lemma add_succ (a b : ℙ) : a + succ b = succ (a + b) :=
 begin
   induction b with b hb b hb generalizing a,
   { show a + (1 + 1) = succ (a + 1),
-    rw succ_eq_add_one,
-    exact add_one_add_one a
+    simp,
+    convert add_one_add_one a,
+    simp,
   },
   { induction a with a ha a ha,
-    { simp [succ_eq_one_add] },
+    { simp },
     { simp, --rw succ_eq_add_one,
-      rw hb a,
-      rw succ_eq_add_one },
+      rw hb a },
     { simp [hb a] } },
-  { simp,
-    induction a with a ha a ha,
-    { simp [succ_eq_one_add] },
-    { simp [succ_eq_add_one] },
-    { rw [bit0_add_bit1, bit0_add_bit0, succ_bit0] } }
+  { induction a with a ha a ha; simp },
+end
+
+lemma add_comm (a b : ℙ) : a + b = b + a :=
+begin
+  induction b with b hb b hb generalizing a,
+  { simp },
+  { cases a with a a,
+    { rw one_add_bit1',
+      rw bit1_add_one',
+      rw hb 1,
+      refl },
+    { rw [bit1_add_bit1, bit1_add_bit1, hb] },
+    { rw [bit0_add_bit1, bit1_add_bit0, hb] } },
+  { cases a with a a,
+    { rw [one_add_bit0', bit0_add_one'] },
+    { rw [bit1_add_bit0, bit0_add_bit1, hb] },
+    { rw [bit0_add_bit0, bit0_add_bit0, hb] }
+  }
+end
+
+@[simp] lemma succ_add (a b : ℙ) : (succ a) + b = succ (a + b) :=
+begin
+  rw add_comm,
+  rw add_succ,
+  rw add_comm,
+end
+
+lemma add_assoc (a b c : ℙ) : a + (b + c) = a + b + c :=
+begin
+  induction c with c hc c hc generalizing a b,
+  { simp [add_succ] },
+  { cases b with b b,
+    { rw [add_one_eq_succ', one_add_eq_succ', add_succ, succ_add] },
+    { cases a with a a,
+      { simp },
+      { simp, rw ←hc },
+      sorry },
+    { sorry } },
+  { sorry }
 end
 
 
@@ -261,7 +326,7 @@ begin
 end
 
 @[simp] lemma equiv.to_fun_aux_bit1 (a : ℙ) : equiv.to_fun_aux (bit1 a) =
-  (equiv.to_fun_aux a + equiv.to_fun_aux a + 1) :=
+  _root_.bit1 (equiv.to_fun_aux a) :=
 begin
   refl
 end
@@ -270,6 +335,7 @@ lemma equiv.to_fun_aux_ne_zero (p : ℙ) : equiv.to_fun_aux p ≠ 0 :=
 begin
   induction p;
   simp [*, _root_.bit0],
+  rintro ⟨⟩,
 end
 
 -- note: returns a junk value at 0
@@ -311,21 +377,17 @@ end
 @[simp] lemma equiv.inv_map_add {a b : ℕ} (ha : a ≠ 0) (hb : b ≠ 0) :
   equiv.inv_fun_aux (a + b) = equiv.inv_fun_aux a + equiv.inv_fun_aux b :=
 begin
-  apply pnat'.induction hb,
-  { cases a, cases ha rfl,
-    rw equiv.inv_fun_succ_succ,
-    rw succ_eq_add_one,
+  cases a, cases ha rfl, cases b, cases hb rfl, clear ha, clear hb,
+  induction b with d hd generalizing a,
+  { rw equiv.inv_fun_succ_succ,
+    rw ←add_one_eq_succ,
     congr' },
-  { intro d,
-    intro h,
-    change equiv.inv_fun_aux (a + (d + 1)) = equiv.inv_fun_aux a + equiv.inv_fun_aux (d + 1),
-    change equiv.inv_fun_aux (nat.succ (a + d)) = equiv.inv_fun_aux a + equiv.inv_fun_aux (d + 1),
-    rw equiv.inv_fun_succ, swap, omega,
-    rw ←nat.succ_eq_add_one,
-    rw equiv.inv_fun_succ,
-    rw pos_num.add_succ,
---    show _ = _ + equiv.inv_fun_aux (succ d),
-    sorry, sorry }
+  { rw (show (nat.succ a + nat.succ (nat.succ d) = 
+  (nat.succ (a + d) + 2)), by omega),
+  rw equiv.inv_fun_succ_succ,
+  rw (show nat.succ (a + d) + 1 = nat.succ a + nat.succ d, by omega),
+  rw hd,
+  simp }
 end
 
 
@@ -356,14 +418,18 @@ then the bit0 case just needs the proof that
 
 -- there are two sorries in this section.
 
+
+
 lemma equiv.inv_fun_aux_bit1 {n : ℕ} (hn : n ≠ 0) :
-  bit1 (equiv.inv_fun_aux n) = equiv.inv_fun_aux (n + n + 1) :=
+  bit1 (equiv.inv_fun_aux n) = equiv.inv_fun_aux (_root_.bit1 n) :=
 begin
-  cases n with n, cases (hn rfl), clear hn,
-  apply nat.strong_induction_on n,
-  clear n,
-  intros n hn,
   sorry
+  -- rw ←equiv.inv_fun_bit1,
+  -- cases n with n, cases (hn rfl), clear hn,
+  -- apply nat.strong_induction_on n,
+  -- clear n,
+  -- intros n hn,
+  -- sorry
 end
 
 
@@ -483,12 +549,7 @@ end pred
 -- I want to deduce this from after the equiv
 -- so I should fix the equiv first
 
-lemma add_assoc (a b c : ℙ) : a + (b + c) = (a + b) + c :=
-begin
-  induction c,
-
-  repeat {sorry},
-end
+-- doing add_assoc above
 
 /-! # The usual induction principle -/
 
