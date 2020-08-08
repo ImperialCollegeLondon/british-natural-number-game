@@ -51,50 +51,97 @@ def succ : ℙ → ℙ
 @[simp] lemma succ_bit1 (n : ℙ) : succ (bit1 n) = bit0 (succ n) := rfl
 @[simp] lemma succ_bit0 (n : ℙ) : succ (bit0 n) = bit1 n := rfl
 
-def equiv.to_fun_aux : ℙ → ℕ :=
-pos_num.rec 1 (λ b (n : ℕ), n + n + 1) (λ b n, n + n)
+/-! # Addition -/
 
-@[simp] lemma equiv.to_fun_aux_one : equiv.to_fun_aux 1 = 1 := rfl
-@[simp] lemma equiv.to_fun_aux_one' : equiv.to_fun_aux one = 1 := rfl
+-- Working on making mathematician's interface and
+-- recursor for addition.
 
-@[simp] lemma equiv.to_fun_aux_two : equiv.to_fun_aux (bit0 1) = 2 := rfl
+-- computer scientists want this definition
+/-- addition on ℙ -/
+protected def add : ℙ → ℙ → ℙ
+| 1        b        := succ b
+| a        1        := succ a
+| (bit0 a) (bit0 b) := bit0 (add a b)
+| (bit1 a) (bit1 b) := bit0 (succ (add a b))
+| (bit0 a) (bit1 b) := bit1 (add a b)
+| (bit1 a) (bit0 b) := bit1 (add a b)
 
-@[simp] lemma equiv.to_fun_aux_bit0 (a : ℙ) : equiv.to_fun_aux (bit0 a) =
-  (equiv.to_fun_aux a) + (equiv.to_fun_aux a) :=
+-- I don't need succ, I want + to be the primitive object
+-- because it has more symmetries
+/--
+latexdef $ (+) : \P^2 \to \P $
+| 1        1        := bit0 1
+| 1        (bit0 b) := bit1 b
+| 1        (bit1 b) := bit0 (1 + b)
+| (bit0 a) 1        := bit1 a
+| (bit1 a) 1        := bit1 (a + 1)
+| (bit0 a) (bit0 b) := bit0 (a + b)
+-- when I do the carry one, in exactly
+-- what order do I add the carry 1 to the
+-- two digits in the next column?
+-- This way is is "add like normal, but then don't forget to add on
+-- the carry one after"
+| (bit1 a) (bit1 b) := bit0 ((a + b) + 1)
+| (bit0 a) (bit1 b) := bit1 (a + b)
+| (bit1 a) (bit0 b) := bit1 (a + b)
+-/
+instance : has_add ℙ := ⟨pos_num.add⟩
+
+/-! # Succ -/
+
+
+lemma succ_eq_add_one (a : ℙ) : succ a = a + 1 :=
 begin
-  refl
+  cases a; refl
 end
 
-@[simp] lemma equiv.to_fun_aux_bit1 (a : ℙ) : equiv.to_fun_aux (bit1 a) =
-  (equiv.to_fun_aux a + equiv.to_fun_aux a + 1) :=
+lemma succ_eq_one_add (a : ℙ) : succ a = 1 + a :=
 begin
-  refl
+  cases a; refl
 end
 
-lemma equiv.to_fun_aux_ne_zero (p : ℙ) : equiv.to_fun_aux p ≠ 0 :=
+/-! # Mathematician's interface to addition -/
+-- note: add_succ not yet done
+
+@[simp] lemma one_add_one : 1 + 1 = bit0 1 := rfl
+@[simp] lemma one_add_bit0 (p : ℙ) :
+  1 + bit0 p = bit1 p := rfl
+@[simp] lemma one_add_bit1 (p : ℙ) :
+  (1 : ℙ) + (bit1 p) = bit0 (1 + p) :=
+  begin
+    change succ (bit1 p) = _,
+    unfold succ,
+    congr,
+    apply succ_eq_one_add,
+  end  
+
+@[simp] lemma bit0_add_one (a : ℙ) : (bit0 a) + 1 = bit1 a := rfl
+@[simp] lemma bit1_add_one (a : ℙ) : (bit1 a) + 1 = bit0 (a + 1) :=
 begin
-  induction p;
-  simp [*],
+  show succ (bit1 a) = _,
+  unfold succ,
+  rw succ_eq_add_one
 end
 
-
-def equiv.inv_fun_aux : ℕ → ℙ
-| 0 := thirty_seven -- unreachable code has been reached
-| 1 := 1
-| (n + 2) := succ (equiv.inv_fun_aux (n + 1))
-
---#print prefix equiv.inv_fun
-
-@[simp] lemma equiv.inv_fun_aux_one : equiv.inv_fun_aux 1 = 1 := rfl
-@[simp] lemma equiv.inv_fun_succ_succ (n : ℕ) :
-  equiv.inv_fun_aux (n + 2) =
-    succ (equiv.inv_fun_aux (n + 1)) :=
+@[simp] lemma bit0_add_bit0 (a b : ℙ) :
+  (bit0 a) + (bit0 b) = bit0 (a + b) := rfl
+@[simp] lemma bit1_add_bit1 (a b : ℙ) :
+  (bit1 a) + (bit1 b) = bit0 ((a + b) + 1) :=
 begin
-  refl
+--  show (bit1 a) + (bit1 b) = bit0 ((a + b) + 1) :=
+  show bit0 (succ (a + b)) = _,
+  rw succ_eq_add_one
 end
 
--- equiv.inv_fun_aux : ℕ → pos_num is the identity on positive n.
--- it's defined by recursion
+@[simp] lemma bit0_add_bit1 (a b : ℙ) :
+ (bit0 a) + (bit1 b) = bit1 (a + b) := rfl
+@[simp] lemma bit1_add_bit0 (a b : ℙ) :
+  (bit1 a) + (bit0 b) = bit1 (a + b) := rfl
+
+
+/-! # Even and odd -/
+
+-- This just works.
 
 /-! # Even and odd -- it all works -/
 inductive even : ℙ → Prop
@@ -129,6 +176,82 @@ protected eliminator xena.pos_num.rec : Π {C : ℙ → Sort l},
   { rintro ⟨_,⟨⟩⟩ },
 end
 
+
+lemma odd_add_odd (a b : ℙ) (ha : odd a) (hb : odd b) : even (a + b) :=
+begin
+  cases ha; cases hb; apply even_bit0,
+end
+
+lemma odd_add_even (a b : ℙ) (ha : odd a) (hb : even b) : odd (a + b) :=
+begin
+  cases ha; cases hb; apply odd_bit1,
+end
+
+lemma even_add_odd (a b : ℙ) (ha : even a) (hb : odd b) : odd (a + b) :=
+begin
+  cases ha; cases hb; apply odd_bit1,
+end
+
+lemma even_add_even (a b : ℙ) (ha : even a) (hb : even b) : even (a + b) :=
+begin
+  cases ha; cases hb; apply even_bit0,
+end
+
+def equiv.to_fun_aux : ℙ → ℕ :=
+pos_num.rec 1 (λ b (n : ℕ), _root_.bit1 n) (λ b n, _root_.bit0 n)
+
+@[simp] lemma equiv.to_fun_aux_one : equiv.to_fun_aux 1 = 1 := rfl
+@[simp] lemma equiv.to_fun_aux_one' : equiv.to_fun_aux one = 1 := rfl
+
+@[simp] lemma equiv.to_fun_aux_two : equiv.to_fun_aux (bit0 1) = 2 := rfl
+
+@[simp] lemma equiv.to_fun_aux_bit0 (a : ℙ) : equiv.to_fun_aux (bit0 a) =
+  _root_.bit0 (equiv.to_fun_aux a) :=
+begin
+  refl
+end
+#print _root_.bit0
+
+@[simp] lemma equiv.to_fun_aux_bit1 (a : ℙ) : equiv.to_fun_aux (bit1 a) =
+  (equiv.to_fun_aux a + equiv.to_fun_aux a + 1) :=
+begin
+  refl
+end
+
+lemma equiv.to_fun_aux_ne_zero (p : ℙ) : equiv.to_fun_aux p ≠ 0 :=
+begin
+  induction p;
+  simp [*, _root_.bit0],
+end
+
+
+def equiv.inv_fun_aux : ℕ → ℙ
+| 0 := thirty_seven -- unreachable code has been reached
+| 1 := 1
+| (n + 2) := succ (equiv.inv_fun_aux (n + 1))
+
+--#print prefix equiv.inv_fun
+
+@[simp] lemma equiv.inv_fun_aux_one : equiv.inv_fun_aux 1 = 1 := rfl
+@[simp] lemma equiv.inv_fun_succ_succ (n : ℕ) :
+  equiv.inv_fun_aux (n + 2) =
+    succ (equiv.inv_fun_aux (n + 1)) :=
+begin
+  refl
+end
+
+@[simp] lemma equiv.inv_map_add (a b : ℕ) :
+  equiv.inv_fun_aux (a + b) = equiv.inv_fun_aux a + equiv.inv_fun_aux b :=
+begin
+  sorry
+end
+
+
+-- equiv.inv_fun_aux : ℕ → pos_num is the identity on positive n.
+-- it's defined by recursion
+
+
+
 section equiv
 
 /-! # Equiv - an unfinished project. -/
@@ -138,9 +261,15 @@ section equiv
 -- prove that inv_fun commutes with bit1.
 -- Shing suggested
 /-
-probably. I just followed the proof that the Coq people used to see what it's like. Their proof is like 7 lines, but I'm not familiar enough with Coq (nor do I have it installed) to see what automation they're using
-and for the lemma you're proving, can you prove equiv.inv_fun_aux (a + b) = equiv.inv_fun_aux a + equiv.inv_fun_aux b and bit1 x = x + x + 1? If so, then it's easy
-then the bit0 case just needs the proof that bit0 x = x + x and should be very similar
+probably. I just followed the proof that the Coq people used to see 
+what it's like. Their proof is like 7 lines, but I'm not familiar 
+enough with Coq (nor do I have it installed) to see what automation 
+they're using
+and for the lemma you're proving, can you prove 
+equiv.inv_fun_aux (a + b) = equiv.inv_fun_aux a + equiv.inv_fun_aux b 
+and bit1 x = x + x + 1? If so, then it's easy
+then the bit0 case just needs the proof that
+ bit0 x = x + x and should be very similar
 -/
 
 -- there are two sorries in this section.
@@ -152,11 +281,7 @@ begin
   apply nat.strong_induction_on n,
   clear n,
   intros n hn,
-  induction n with n hI n hI,
-  { simp },
-  { simp * at *,
-    sorry,
-  }
+  sorry
 end
 
 
@@ -173,8 +298,7 @@ def equiv : ℙ ≃ {n : ℕ // n ≠ 0} :=
       suffices : equiv.inv_fun_aux (_root_.bit1 (equiv.to_fun_aux p)) = 
       bit1 (equiv.inv_fun_aux (equiv.to_fun_aux p)),
         convert this,
-      
-
+        sorry,
       sorry },
     { sorry }
   end,
@@ -272,117 +396,6 @@ def pred : ℙ ≃ ℕ :=
 end pred
 
 
-/-! # Addition -/
-
--- Working on making mathematician's interface and
--- recursor for addition.
-
--- computer scientists want this definition
-/-- addition on ℙ -/
-protected def add : ℙ → ℙ → ℙ
-| 1        b        := succ b
-| a        1        := succ a
-| (bit0 a) (bit0 b) := bit0 (add a b)
-| (bit1 a) (bit1 b) := bit0 (succ (add a b))
-| (bit0 a) (bit1 b) := bit1 (add a b)
-| (bit1 a) (bit0 b) := bit1 (add a b)
-
--- I don't need succ, I want + to be the primitive object
--- because it has more symmetries
-/--
-latexdef $ (+) : \P^2 \to \P $
-| 1        1        := bit0 1
-| 1        (bit0 b) := bit1 b
-| 1        (bit1 b) := bit0 (1 + b)
-| (bit0 a) 1        := bit1 a
-| (bit1 a) 1        := bit1 (a + 1)
-| (bit0 a) (bit0 b) := bit0 (a + b)
--- when I do the carry one, in exactly
--- what order do I add the carry 1 to the
--- two digits in the next column?
--- This way is is "add like normal, but then don't forget to add on
--- the carry one after"
-| (bit1 a) (bit1 b) := bit0 ((a + b) + 1)
-| (bit0 a) (bit1 b) := bit1 (a + b)
-| (bit1 a) (bit0 b) := bit1 (a + b)
--/
-instance : has_add ℙ := ⟨pos_num.add⟩
-
-/-! # Succ -/
-
-
-lemma succ_eq_add_one (a : ℙ) : succ a = a + 1 :=
-begin
-  cases a; refl
-end
-
-lemma succ_eq_one_add (a : ℙ) : succ a = 1 + a :=
-begin
-  cases a; refl
-end
-
-/-! # Mathematician's interface to addition -/
--- note: add_succ not yet done
-
-@[simp] lemma one_add_one : 1 + 1 = bit0 1 := rfl
-@[simp] lemma one_add_bit0 (p : ℙ) :
-  1 + bit0 p = bit1 p := rfl
-@[simp] lemma one_add_bit1 (p : ℙ) :
-  (1 : ℙ) + (bit1 p) = bit0 (1 + p) :=
-  begin
-    change succ (bit1 p) = _,
-    unfold succ,
-    congr,
-    apply succ_eq_one_add,
-  end  
-
-@[simp] lemma bit0_add_one (a : ℙ) : (bit0 a) + 1 = bit1 a := rfl
-@[simp] lemma bit1_add_one (a : ℙ) : (bit1 a) + 1 = bit0 (a + 1) :=
-begin
-  show succ (bit1 a) = _,
-  unfold succ,
-  rw succ_eq_add_one
-end
-
-@[simp] lemma bit0_add_bit0 (a b : ℙ) :
-  (bit0 a) + (bit0 b) = bit0 (a + b) := rfl
-@[simp] lemma bit1_add_bit1 (a b : ℙ) :
-  (bit1 a) + (bit1 b) = bit0 ((a + b) + 1) :=
-begin
---  show (bit1 a) + (bit1 b) = bit0 ((a + b) + 1) :=
-  show bit0 (succ (a + b)) = _,
-  rw succ_eq_add_one
-end
-
-@[simp] lemma bit0_add_bit1 (a b : ℙ) :
- (bit0 a) + (bit1 b) = bit1 (a + b) := rfl
-@[simp] lemma bit1_add_bit0 (a b : ℙ) :
-  (bit1 a) + (bit0 b) = bit1 (a + b) := rfl
-
-
-/-! # Even and odd -/
-
--- This just works.
-
-lemma odd_add_odd (a b : ℙ) (ha : odd a) (hb : odd b) : even (a + b) :=
-begin
-  cases ha; cases hb; apply even_bit0,
-end
-
-lemma odd_add_even (a b : ℙ) (ha : odd a) (hb : even b) : odd (a + b) :=
-begin
-  cases ha; cases hb; apply odd_bit1,
-end
-
-lemma even_add_odd (a b : ℙ) (ha : even a) (hb : odd b) : odd (a + b) :=
-begin
-  cases ha; cases hb; apply odd_bit1,
-end
-
-lemma even_add_even (a b : ℙ) (ha : even a) (hb : even b) : even (a + b) :=
-begin
-  cases ha; cases hb; apply even_bit0,
-end
 
 
 
