@@ -96,6 +96,19 @@ end
 -- equiv.inv_fun_aux : ℕ → pos_num is the identity on positive n.
 -- it's defined by recursion
 
+section equiv
+
+/-! # Equiv - an unfinished project. -/
+
+-- the sorries up to the end of this section 
+-- this sorry is me being stuck trying to
+-- prove that inv_fun commutes with bit1.
+-- Shing suggested
+/-
+probably. I just followed the proof that the Coq people used to see what it's like. Their proof is like 7 lines, but I'm not familiar enough with Coq (nor do I have it installed) to see what automation they're using
+and for the lemma you're proving, can you prove equiv.inv_fun_aux (a + b) = equiv.inv_fun_aux a + equiv.inv_fun_aux b and bit1 x = x + x + 1? If so, then it's easy
+then the bit0 case just needs the proof that bit0 x = x + x and should be very similar
+-/
 lemma equiv.inv_fun_aux_bit1 {n : ℕ} (hn : n ≠ 0) :
   bit1 (equiv.inv_fun_aux n) = equiv.inv_fun_aux (n + n + 1) :=
 begin
@@ -108,8 +121,6 @@ begin
   { simp * at *,
     sorry,
   }
-
-  -- how to do this? Back in 15 mins
 end
 
 
@@ -132,6 +143,8 @@ def equiv : ℙ ≃ {n : ℕ // n ≠ 0} :=
     { sorry }
   end,
   right_inv := sorry }
+
+end equiv -- now sorry-free again
 
 def pred.to_fun : ℙ → ℕ :=
 pos_num.rec 0 (λ b (n : ℕ), (n + n + 1 + 1)) (λ b n, n + n + 1)
@@ -243,6 +256,16 @@ protected def add : ℙ → ℙ → ℙ
 | (bit1 a) (bit0 b) := bit1 (add a b)
 
 instance : has_add ℙ := ⟨pos_num.add⟩
+
+@[simp] lemma one_add_one : 1 + 1 = bit0 1 := rfl
+@[simp] lemma one_add_bit0 (p : ℙ) :
+  1 + bit0 p = bit1 p := rfl
+@[simp] lemma one_add_bit1 (p : ℙ) :
+  (1 : ℙ) + (bit1 p) = bit0 (p + 1) :=
+  begin
+    change succ (bit1 p) = _,
+    sorry,
+  end  
 
 lemma odd_add_odd (a b : ℙ) (ha : odd a) (hb : odd b) : even (a + b) :=
 begin
