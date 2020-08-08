@@ -5,7 +5,17 @@ import tactic
 
 namespace xena
 
---import data.vector data.bitvec
+-- should be elsewhere
+-- pnat inductive principle
+@[elab_as_eliminator] def pnat'.induction {C : ℕ → Prop} {n : ℕ} (hn : n ≠ 0) (h1 : C 1)
+  (IH : ∀ d, C d → C (d + 1)) : C n :=
+begin
+  cases n, cases hn rfl, clear hn,
+  induction n with d hd, assumption,
+  apply IH,
+  assumption,
+end
+
 
 /-- The type of positive binary numbers.
 
@@ -184,6 +194,12 @@ begin
   simp,
 end
 
+lemma bit1_eq_succ_add_self (p : ℙ) : bit1 p = succ (p + p) :=
+begin
+  simp [bit1_eq_add_self_add_one]
+end
+
+
 /-! # Even and odd -/
 
 -- This just works but it's kind of useless.
@@ -299,9 +315,12 @@ begin
     { cases a with a a,
       { simp },
       { simp, rw ←hc },
-      sorry },
-    { sorry } },
-  { sorry }
+      { simp [hc] } },
+    { cases a with a a; simp [hc] } },
+  { cases b with b b,
+    { simp, rw [←succ_bit0, add_succ] },
+    { cases a with a a; simp [hc] },
+    { cases a; simp [hc]  } }
 end
 
 
@@ -331,11 +350,20 @@ begin
   refl
 end
 
-lemma equiv.to_fun_aux_ne_zero (p : ℙ) : equiv.to_fun_aux p ≠ 0 :=
+lemma equiv.to_fun_ne_zero (p : ℙ) : equiv.to_fun_aux p ≠ 0 :=
 begin
   induction p;
   simp [*, _root_.bit0],
   rintro ⟨⟩,
+end
+
+lemma equiv.to_fun_succ (p : ℙ) :
+  equiv.to_fun_aux (succ p) = nat.succ (equiv.to_fun_aux p) :=
+begin
+  induction p with p hp p hp,
+  { refl },
+  {simp [hp], generalize h : equiv.to_fun_aux p = n, show (n + 1) + (n + 1) = (n + n + 1) + 1, ring },
+  { refl }
 end
 
 -- note: returns a junk value at 0
@@ -374,7 +402,7 @@ end
 
 
 /-! ## relation between equiv and addition -/
-@[simp] lemma equiv.inv_map_add {a b : ℕ} (ha : a ≠ 0) (hb : b ≠ 0) :
+@[simp] lemma equiv.inv_fun_add {a b : ℕ} (ha : a ≠ 0) (hb : b ≠ 0) :
   equiv.inv_fun_aux (a + b) = equiv.inv_fun_aux a + equiv.inv_fun_aux b :=
 begin
   cases a, cases ha rfl, cases b, cases hb rfl, clear ha, clear hb,
@@ -388,6 +416,21 @@ begin
   rw (show nat.succ (a + d) + 1 = nat.succ a + nat.succ d, by omega),
   rw hd,
   simp }
+end
+
+@[simp] lemma equiv.inv_fun_bit0 {a : ℕ} (ha : a ≠ 0) :
+  equiv.inv_fun_aux (_root_.bit0 a) = bit0 (equiv.inv_fun_aux a) :=
+begin
+  simp [bit0_eq_add_self, (show _root_.bit0 a = a + a, from rfl),
+    equiv.inv_fun_add ha ha]
+end
+
+@[simp] lemma equiv.inv_fun_bit1 {a : ℕ} (ha : a ≠ 0) :
+  equiv.inv_fun_aux (_root_.bit1 a) = bit1 (equiv.inv_fun_aux a) :=
+begin
+  rw [←succ_bit0, nat.bit1_eq_succ_bit0, equiv.inv_fun_succ],
+  congr', 
+  rw equiv.inv_fun_bit0 ha, intro h, apply ha, exact nat.bit0_inj h,
 end
 
 
@@ -416,40 +459,28 @@ then the bit0 case just needs the proof that
  bit0 x = x + x and should be very similar
 -/
 
--- there are two sorries in this section.
-
-
-
-lemma equiv.inv_fun_aux_bit1 {n : ℕ} (hn : n ≠ 0) :
-  bit1 (equiv.inv_fun_aux n) = equiv.inv_fun_aux (_root_.bit1 n) :=
-begin
-  sorry
-  -- rw ←equiv.inv_fun_bit1,
-  -- cases n with n, cases (hn rfl), clear hn,
-  -- apply nat.strong_induction_on n,
-  -- clear n,
-  -- intros n hn,
-  -- sorry
-end
-
-
 def equiv : ℙ ≃ {n : ℕ // n ≠ 0} :=
-{ to_fun := λ p, ⟨equiv.to_fun_aux p, equiv.to_fun_aux_ne_zero p⟩,
+{ to_fun := λ p, ⟨equiv.to_fun_aux p, equiv.to_fun_ne_zero p⟩,
   inv_fun := λ n, equiv.inv_fun_aux n.1,
   left_inv := begin
     intro p,
     induction p with p h p h,
     { refl },
-    { simp at h,
-      simp,
-      conv begin to_rhs, rw ←h, end,
-      suffices : equiv.inv_fun_aux (_root_.bit1 (equiv.to_fun_aux p)) = 
-      bit1 (equiv.inv_fun_aux (equiv.to_fun_aux p)),
-        convert this,
-        sorry },
-    { sorry }
+    { simp at *, rw [equiv.inv_fun_bit1, h], apply equiv.to_fun_ne_zero },
+    { simp * at *, rw [equiv.inv_fun_bit0, h], apply equiv.to_fun_ne_zero },
   end,
-  right_inv := sorry }
+  right_inv := begin
+    intro n,
+    cases n with n hn,
+    simp,
+    apply pnat'.induction hn, refl,
+    intros d hd,
+    rw [←nat.succ_eq_add_one],
+    cases d, refl,
+    rw equiv.inv_fun_succ_succ,
+    rw equiv.to_fun_succ,
+    rw hd 
+  end }
 
 end equiv -- now sorry-free again
 
