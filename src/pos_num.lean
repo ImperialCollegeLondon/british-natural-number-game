@@ -1,7 +1,9 @@
--- `num` -- the British Natural Numbers.
-import tactic
-namespace xena
+-- `pos_num` -- the British Natural Numbers.
 -- The same as pnat
+
+import tactic
+
+namespace xena
 
 --import data.vector data.bitvec
 
@@ -19,13 +21,217 @@ notation `ℙ` := pos_num
 namespace pos_num
 
 instance : has_one ℙ := ⟨pos_num.one⟩
-instance : inhabited ℙ := ⟨bit1 (bit0 (bit1 (bit0 (bit0 (one)))))⟩
+
+def thirty_seven := bit1 (bit0 (bit1 (bit0 (bit0 (one)))))
+
+instance : inhabited ℙ := ⟨thirty_seven⟩
+
+#print pos_num.rec
+@[simp] lemma rec_one (C : ℙ → Type) (x : C 1) (h1 : Π (a : ℙ), C a → C (bit1 a))
+ (h0 : Π (a : ℙ), C a → C (bit0 a)) : (pos_num.rec x h1 h0 1  : C 1) = x := rfl
+
+@[simp] lemma rec_one' (C : ℙ → Type) (x : C 1) (h1 : Π (a : ℙ), C a → C (bit1 a))
+ (h0 : Π (a : ℙ), C a → C (bit0 a)) : (pos_num.rec x h1 h0 one  : C one) = x := rfl
+
+@[simp] lemma rec_bit0 (C : ℙ → Type) (x : C 1) (h1 : Π (a : ℙ), C a → C (bit1 a))
+   (h0 : Π (a : ℙ), C a → C (bit0 a)) (p : ℙ) :
+   (pos_num.rec x h1 h0 (bit0 p)  : C (bit0 p)) = h0 p (pos_num.rec x h1 h0 p) := rfl
+
+@[simp] lemma rec_bit1 (C : ℙ → Type) (x : C 1) (h1 : Π (a : ℙ), C a → C (bit1 a))
+   (h0 : Π (a : ℙ), C a → C (bit0 a)) (p : ℙ) :
+   (pos_num.rec x h1 h0 (bit1 p)  : C (bit1 p)) = h1 p (pos_num.rec x h1 h0 p) := rfl
+
 
 def succ : ℙ → ℙ
 | 1        := bit0 one
 | (bit1 n) := bit0 (succ n)
 | (bit0 n) := bit1 n
 
+@[simp] lemma succ_one : succ 1 = bit0 1 := rfl
+@[simp] lemma succ_bit1 (n : ℙ) : succ (bit1 n) = bit0 (succ n) := rfl
+@[simp] lemma succ_bit0 (n : ℙ) : succ (bit0 n) = bit1 n := rfl
+
+def equiv.to_fun_aux : ℙ → ℕ :=
+pos_num.rec 1 (λ b (n : ℕ), n + n + 1) (λ b n, n + n)
+
+@[simp] lemma equiv.to_fun_aux_one : equiv.to_fun_aux 1 = 1 := rfl
+@[simp] lemma equiv.to_fun_aux_one' : equiv.to_fun_aux one = 1 := rfl
+
+@[simp] lemma equiv.to_fun_aux_two : equiv.to_fun_aux (bit0 1) = 2 := rfl
+
+@[simp] lemma equiv.to_fun_aux_bit0 (a : ℙ) : equiv.to_fun_aux (bit0 a) =
+  (equiv.to_fun_aux a) + (equiv.to_fun_aux a) :=
+begin
+  refl
+end
+
+@[simp] lemma equiv.to_fun_aux_bit1 (a : ℙ) : equiv.to_fun_aux (bit1 a) =
+  (equiv.to_fun_aux a + equiv.to_fun_aux a + 1) :=
+begin
+  refl
+end
+
+lemma equiv.to_fun_aux_ne_zero (p : ℙ) : equiv.to_fun_aux p ≠ 0 :=
+begin
+  induction p;
+  simp [*],
+end
+
+
+def equiv.inv_fun_aux : ℕ → ℙ
+| 0 := thirty_seven -- unreachable code has been reached
+| 1 := 1
+| (n + 2) := succ (equiv.inv_fun_aux (n + 1))
+
+--#print prefix equiv.inv_fun
+
+@[simp] lemma equiv.inv_fun_aux_one : equiv.inv_fun_aux 1 = 1 := rfl
+@[simp] lemma equiv.inv_fun_succ_succ (n : ℕ) :
+  equiv.inv_fun_aux (n + 2) =
+    succ (equiv.inv_fun_aux (n + 1)) :=
+begin
+  refl
+end
+
+-- equiv.inv_fun_aux : ℕ → pos_num is the identity on positive n.
+-- it's defined by recursion
+
+lemma equiv.inv_fun_aux_bit1 {n : ℕ} (hn : n ≠ 0) :
+  bit1 (equiv.inv_fun_aux n) = equiv.inv_fun_aux (n + n + 1) :=
+begin
+  cases n with n, cases (hn rfl), clear hn,
+  apply nat.strong_induction_on n,
+  clear n,
+  intros n hn,
+  induction n with n hI n hI,
+  { simp },
+  { simp * at *,
+    sorry,
+  }
+
+  -- how to do this? Back in 15 mins
+end
+
+
+def equiv : ℙ ≃ {n : ℕ // n ≠ 0} :=
+{ to_fun := λ p, ⟨equiv.to_fun_aux p, equiv.to_fun_aux_ne_zero p⟩,
+  inv_fun := λ n, equiv.inv_fun_aux n.1,
+  left_inv := begin
+    intro p,
+    induction p with p h p h,
+    { refl },
+    { simp at h,
+      simp,
+      conv begin to_rhs, rw ←h, end,
+      suffices : equiv.inv_fun_aux (_root_.bit1 (equiv.to_fun_aux p)) = 
+      bit1 (equiv.inv_fun_aux (equiv.to_fun_aux p)),
+        convert this,
+      
+
+      sorry },
+    { sorry }
+  end,
+  right_inv := sorry }
+
+def pred.to_fun : ℙ → ℕ :=
+pos_num.rec 0 (λ b (n : ℕ), (n + n + 1 + 1)) (λ b n, n + n + 1)
+
+lemma pred.to_fun_one : pred.to_fun 1 = 0 := rfl
+lemma pred.to_fun_two : pred.to_fun (bit0 1) = 1 := rfl
+lemma pred.to_fun_bit0 (a : ℙ) : pred.to_fun (bit0 a) =
+  (pred.to_fun a) + (pred.to_fun a) + 1 :=
+begin
+  refl
+end
+
+lemma pred.to_fun_bit1 (a : ℙ) : pred.to_fun (bit1 a) =
+  (pred.to_fun a + pred.to_fun a + 1 + 1) :=
+begin
+  refl
+end
+
+def pred.inv_fun := nat.rec 1 (λ n p, succ p)
+
+lemma pred.inv_fun_zero : pred.inv_fun 0 = 1 :=rfl
+lemma pred.inv_fun_succ (n : ℕ) :
+  pred.inv_fun (nat.succ n) = succ (pred.inv_fun n) :=rfl
+lemma pred.inv_fun_succ' (n : ℕ) :
+  pred.inv_fun (n + 1) = succ (pred.inv_fun n) :=rfl
+
+
+/-! # equiv -/
+def pred : ℙ ≃ ℕ :=
+{ to_fun := pred.to_fun,
+  inv_fun := pred.inv_fun,
+  left_inv := begin
+    intro p,
+    induction p with p hp p hp,
+    { refl },
+    { rw pred.to_fun_bit1,
+      rw pred.inv_fun_succ',
+      simp,
+--      simp_rw [pos_num.rec_bit1],
+--      let ZZZ := @nat.rec _ 1 (λ (n : ℕ), succ)
+--      (pos_num.rec 0 (λ (b : ℙ) (n : ℕ), n + n) (λ (b : ℙ) (n : ℕ), n + n + 1) (bit1 n_a)) = bit1 n_a,
+--      change ZZZ,
+      -- change @nat.rec _ 1 (λ (n : ℕ), succ)
+      -- (pos_num.rec
+      --   0
+      --   (λ (b : ℙ) (n : ℕ), n + n)
+      --   (λ (b : ℙ) (n : ℕ), n + n + 1)
+      --   (bit1 n_a)
+      -- ) = bit1 n_a,
+      -- let WWW := @nat.rec _ 1 (λ (n : ℕ), succ)
+      -- ((pos_num.rec
+      --   0
+      --   (λ (b : ℙ) (n : ℕ), n + n)
+      --   (λ (b : ℙ) (n : ℕ), n + n + 1)
+      --   n_a
+      -- ) +
+      --      (pos_num.rec
+      --   0
+      --   (λ (b : ℙ) (n : ℕ), n + n)
+      --   (λ (b : ℙ) (n : ℕ), n + n + 1)
+      --   n_a
+      -- ) +
+      -- 1)
+      -- = bit1 n_a,
+      -- suffices : WWW,
+      -- convert this,
+      
+      sorry,
+       },
+    { sorry }
+  end,
+  right_inv := sorry }
+
+
+inductive even : ℙ → Prop
+| even_bit0 (n : ℙ) : even (bit0 n)
+
+inductive odd : ℙ → Prop
+| odd_one : odd 1
+| odd_bit1 (n : ℙ) : odd (bit1 n)
+
+def odd_one := odd.odd_one -- put it in the root namespace
+def even_bit0 := even.even_bit0
+def odd_bit1 := odd.odd_bit1
+
+lemma even_or_odd (a : ℙ) : even a ∨ odd a :=
+begin
+  cases a,
+  right, apply odd_one,
+  right, apply odd_bit1,
+  left, apply even_bit0
+end
+
+lemma not_even_and_odd (a : ℙ) : ¬ (even a ∧ odd a) :=
+begin
+  induction a,
+  { rintro ⟨⟨⟩,_⟩},
+  { rintro ⟨⟨⟩,_⟩},
+  { rintro ⟨_,⟨⟩⟩ },
+end
 
 /-- addition on ℙ -/
 protected def add : ℙ → ℙ → ℙ
@@ -38,6 +244,27 @@ protected def add : ℙ → ℙ → ℙ
 
 instance : has_add ℙ := ⟨pos_num.add⟩
 
+lemma odd_add_odd (a b : ℙ) (ha : odd a) (hb : odd b) : even (a + b) :=
+begin
+  cases ha; cases hb; apply even_bit0,
+end
+
+lemma odd_add_even (a b : ℙ) (ha : odd a) (hb : even b) : odd (a + b) :=
+begin
+  cases ha; cases hb; apply odd_bit1,
+end
+
+lemma even_add_odd (a b : ℙ) (ha : even a) (hb : odd b) : odd (a + b) :=
+begin
+  cases ha; cases hb; apply odd_bit1,
+end
+
+lemma even_add_even (a b : ℙ) (ha : even a) (hb : even b) : even (a + b) :=
+begin
+  cases ha; cases hb; apply even_bit0,
+end
+
+
 lemma succ_eq_add_one (a : ℙ) : succ a = a + 1 :=
 begin
   cases a; refl
@@ -48,12 +275,37 @@ begin
   cases a; refl
 end
 
+lemma add_succ (a b : ℙ) : a + succ b = succ (a + b) :=
+begin
+  induction a; induction b;
+  try {refl },
+  repeat {sorry },
+end
+
+-- addition
+
+lemma add_assoc (a b c : ℙ) : a + (b + c) = (a + b) + c :=
+begin
+  induction c,
+
+  repeat {sorry},
+end
+
+lemma induction (C : ℙ → Prop) (h1 : C 1) (hsucc : ∀ n : ℙ, C n → C (n + 1)) :
+  ∀ n, C n :=
+begin
+  intro n,
+  induction n with a b,
+  { assumption },
+  repeat {sorry},
+end
 
 
-def pred : ℙ → ℙ
+
+def pred' : ℙ → ℙ
 | 1 := 37
 | (bit1 a) := bit0 a
-| (bit0 a) := bit1 (pred a)
+| (bit0 a) := bit1 (pred' a)
 
 def size : ℙ → ℙ
 | 1        := 1
