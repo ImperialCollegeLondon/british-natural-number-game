@@ -1,6 +1,12 @@
 -- `pos_num` -- the British Natural Numbers.
 -- The same as pnat
 
+/- todo -- 
+  make nicer recursor to get less `one` and more `1`.
+  le world
+  add docstrings
+  add questions (these are solutions)  
+-/
 import tactic
 
 namespace xena
@@ -42,6 +48,10 @@ def thirty_seven := bit1 (bit0 (bit1 (bit0 (bit0 (one)))))
 instance : inhabited ℙ := ⟨thirty_seven⟩
 
 -- this interface for rec is just to make stuff work under the hood.
+/-
+using 'exit' to interrupt Lean
+-/
+
 --#check @pos_num.rec
 -- if you are interested.
 @[simp] lemma rec_one (C : ℙ → Type) (x : C 1) (h1 : Π (a : ℙ), C a → C (bit1 a))
@@ -257,6 +267,8 @@ lemma even_add_even (a b : ℙ) (ha : even a) (hb : even b) : even (a + b) :=
 begin
   cases ha; cases hb; apply even_bit0,
 end
+
+-- end of odd/even nonsense; now back to associativity and commutativity
 
 lemma add_one_add_one (a : ℙ) : a + (1 + 1) = a + 1 + 1 :=
 begin
